@@ -1,15 +1,1286 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的遊戲</title>
+    <title>指尖射手 - 光譜行動</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #1E3A5F; /* 深藍色背景 */
+            font-family: 'Microsoft JhengHei', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            z-index: 5;
+        }
+
+        /* HUD - 明亮科技風 */
+        #hud-top-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding-top: 20px;
+            gap: 20px;
+        }
+
+        .hud-panel {
+            background: rgba(10, 20, 40, 0.6); 
+            backdrop-filter: blur(10px);
+            padding: 10px 25px;
+            border-radius: 30px;
+            border: 1px solid rgba(0, 200, 255, 0.4); 
+            color: #fff;
+            font-size: 20px;
+            font-weight: 800;
+            font-family: 'Microsoft JhengHei', monospace;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            min-width: 120px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        #timer-board { color: #00ffff; } 
+        #accuracy-board { color: #00ff88; } 
+        #player-info-board { color: #ffffff; }
+
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            transition: transform 0.1s;
+        }
+        
+        #crosshair::before, #crosshair::after {
+            content: '';
+            position: absolute;
+            background: #00ffff; 
+            box-shadow: 0 0 4px #000;
+        }
+        
+        #crosshair::before { top: 9px; left: 0; width: 20px; height: 2px; }
+        #crosshair::after { top: 0; left: 9px; width: 2px; height: 20px; }
+
+        .overlay-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            pointer-events: auto;
+        }
+
+        #blocker {
+            background-color: rgba(20, 40, 60, 0.6); 
+            backdrop-filter: blur(8px);
+            display: none; 
+        }
+
+        #instructions {
+            text-align: center;
+            cursor: pointer;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            padding: 50px;
+            background: rgba(30, 50, 70, 0.9);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            border-radius: 20px;
+            transition: transform 0.2s;
+            color: #fff;
+        }
+
+        #instructions:hover {
+            transform: scale(1.02);
+        }
+
+        #result-screen {
+            background-color: rgba(20, 30, 50, 0.9);
+            backdrop-filter: blur(10px);
+            display: none;
+            z-index: 25;
+            color: #fff;
+        }
+
+        .result-box {
+            border: 2px solid #00aaff;
+            padding: 50px;
+            background: rgba(30, 40, 60, 0.95);
+            text-align: center;
+            width: 450px;
+            box-shadow: 0 20px 60px rgba(0, 150, 255, 0.2);
+            border-radius: 30px;
+        }
+
+        h1 {
+            font-size: 48px;
+            margin-bottom: 10px;
+            color: #00aaff;
+            text-transform: uppercase;
+            font-family: 'Microsoft JhengHei', sans-serif;
+            margin-top: 0;
+            font-weight: 900; 
+            letter-spacing: 2px;
+            text-shadow: 0 0 15px rgba(0, 170, 255, 0.6);
+        }
+
+        p {
+            font-size: 18px;
+            color: #ccc;
+            font-family: 'Microsoft JhengHei', monospace;
+        }
+
+        .key {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 2px 10px;
+            margin: 0 2px;
+            border-radius: 6px;
+            font-weight: bold;
+            box-shadow: 0 2px 0 rgba(0,0,0,0.2);
+        }
+
+        /* --- 登入畫面 --- */
+        #login-screen {
+            background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+            z-index: 20; 
+            color: #fff;
+        }
+
+        #loading-screen { 
+            background: #1a1a2e;
+            z-index: 15; 
+            display: none; 
+        }
+
+        .login-box {
+            position: relative;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            
+            padding: 50px;
+            text-align: center;
+            width: 550px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            border-radius: 30px;
+        }
+
+        .login-box h1 {
+            font-size: 42px;
+            margin: 0;
+            background: -webkit-linear-gradient(#00c6ff, #0072ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 4px;
+            border: none;
+            text-shadow: none;
+        }
+
+        .login-subtitle {
+            color: #ccc; 
+            font-size: 14px;
+            letter-spacing: 6px;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+            font-weight: bold;
+            font-family: 'Microsoft JhengHei', sans-serif;
+        }
+
+        .input-group { margin: 20px 0; text-align: left; }
+        
+        .input-label { 
+            font-size: 13px; 
+            color: #00aaff; 
+            font-weight: 800; 
+            font-family: 'Microsoft JhengHei', monospace; 
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            display: block;
+            text-transform: uppercase;
+        }
+
+        input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px solid transparent;
+            color: #fff;
+            padding: 16px;
+            font-family: monospace;
+            font-size: 18px;
+            outline: none;
+            box-sizing: border-box;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        input:focus {
+            border-color: #00ccff;
+            background: rgba(0, 0, 0, 0.5);
+            box-shadow: 0 0 15px rgba(0, 204, 255, 0.3);
+        }
+
+        .char-selector {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .char-option {
+            flex: 0 0 22%;
+            background: rgba(0, 0, 0, 0.2);
+            border: 2px solid transparent;
+            padding: 10px 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+            border-radius: 12px;
+            box-sizing: border-box;
+        }
+
+        .char-option:hover {
+            transform: translateY(-2px);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .char-option.selected {
+            border-color: #00aaff;
+            background: rgba(0, 170, 255, 0.15);
+            box-shadow: 0 0 10px rgba(0, 170, 255, 0.3);
+        }
+        
+        .skin-preview {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            margin: 0 auto 5px auto;
+            border: 2px solid #fff;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .skin-name {
+            font-size: 12px;
+            font-weight: bold;
+            color: #aaa;
+            font-family: 'Microsoft JhengHei', sans-serif;
+        }
+        
+        .char-option.selected .skin-name { color: #fff; }
+
+        button.neon-btn {
+            background: linear-gradient(135deg, #00c6ff, #0072ff);
+            color: #fff;
+            border: none;
+            padding: 18px;
+            font-size: 18px;
+            font-weight: 900;
+            letter-spacing: 2px;
+            cursor: pointer;
+            margin-top: 30px;
+            font-family: 'Microsoft JhengHei', sans-serif;
+            text-transform: uppercase;
+            width: 100%;
+            border-radius: 50px; 
+            box-shadow: 0 10px 20px rgba(0, 114, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        button.neon-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 25px rgba(0, 114, 255, 0.4);
+        }
+
+        button.neon-btn:active {
+            transform: scale(0.98);
+        }
+
+        button.logout-btn {
+            background: rgba(255, 50, 50, 0.1);
+            color: #ff5555;
+            border: 2px solid #ff5555;
+            padding: 15px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 0;
+            font-family: 'Microsoft JhengHei', sans-serif;
+            text-transform: uppercase;
+            width: 100%;
+            border-radius: 50px;
+            transition: all 0.2s;
+        }
+
+        button.logout-btn:hover { 
+            background: #ff4444;
+            color: #fff;
+        }
+
+        .btn-group { display: flex; gap: 15px; margin-top: 30px; }
+
+        #progress-container {
+            width: 400px;
+            height: 8px;
+            background: #eee;
+            margin-top: 30px;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        #progress-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #00c6ff, #0072ff);
+            border-radius: 4px;
+        }
+
+        .leaderboard-list {
+            list-style: none;
+            padding: 0;
+            margin: 20px 0;
+            text-align: left;
+            border-top: 1px solid #eee;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-family: monospace;
+            font-size: 16px;
+        }
+        .leaderboard-item span:first-child { color: #888; }
+        .leaderboard-item span:last-child { color: #00aaff; font-weight: bold; }
+        
+        .score-big {
+            font-size: 64px;
+            color: #333;
+            margin: 10px 0;
+            font-weight: 900;
+            text-shadow: 2px 2px 0 #eee;
+            font-family: 'Segoe UI', sans-serif;
+        }
+    </style>
+    
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js",
+                "three/examples/jsm/controls/PointerLockControls": "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/controls/PointerLockControls.js"
+            }
+        }
+    </script>
 </head>
-
 <body>
-    <h1>請將您的遊戲程式碼貼到這裡</h1>
-    <p>請開啟 `jun.html`，複製所有內容，並取代此檔案的內容。</p>
-</body>
 
+    <!-- 1. 註冊畫面 (全新設計) -->
+    <div id="login-screen" class="overlay-screen">
+        <div class="login-box">
+            <h1>光譜行動</h1>
+            <div class="login-subtitle">高科技戰術模擬訓練</div>
+            
+            <div class="input-group">
+                <label class="input-label">特務代號 (自動生成)</label>
+                <input type="text" id="username" placeholder="輸入您的代號..." maxlength="12" autocomplete="off">
+            </div>
+
+            <div class="input-group">
+                <label class="input-label">裝備選擇</label>
+                <div class="char-selector">
+                    <div class="char-option selected" data-color="0xe0ac69" data-skin="human">
+                        <div class="skin-preview" style="background-color: #e0ac69;"></div>
+                        <div class="skin-name">經典</div>
+                    </div>
+                    <div class="char-option" data-color="0x8d5524" data-skin="dark">
+                        <div class="skin-preview" style="background-color: #8d5524;"></div>
+                        <div class="skin-name">古銅</div>
+                    </div>
+                    <div class="char-option" data-color="0xffd700" data-skin="gold">
+                        <div class="skin-preview" style="background: radial-gradient(circle, #fff700, #ffaa00);"></div>
+                        <div class="skin-name">黃金</div>
+                    </div>
+                    <div class="char-option" data-color="0xc0c0c0" data-skin="cyborg">
+                        <div class="skin-preview" style="background: linear-gradient(135deg, #e0e0e0, #888);"></div>
+                        <div class="skin-name">鈦金</div>
+                    </div>
+                    <div class="char-option" data-color="0x4caf50" data-skin="mutant">
+                        <div class="skin-preview" style="background-color: #4caf50;"></div>
+                        <div class="skin-name">生化</div>
+                    </div>
+                    <div class="char-option" data-color="0xff4444" data-skin="red">
+                        <div class="skin-preview" style="background-color: #ff4444;"></div>
+                        <div class="skin-name">赤紅</div>
+                    </div>
+                    <div class="char-option" data-color="0x9933ff" data-skin="purple">
+                        <div class="skin-preview" style="background-color: #9933ff;"></div>
+                        <div class="skin-name">虛空</div>
+                    </div>
+                    <div class="char-option" data-color="0x00ffff" data-skin="ice">
+                        <div class="skin-preview" style="background-color: #00ffff; box-shadow: 0 0 5px #00ffff;"></div>
+                        <div class="skin-name">冰藍</div>
+                    </div>
+                </div>
+            </div>
+
+            <button id="login-btn" class="neon-btn">連結神經網路</button>
+        </div>
+    </div>
+
+    <!-- 2. 載入畫面 -->
+    <div id="loading-screen" class="overlay-screen">
+        <h2 style="font-size: 24px; font-family: monospace; letter-spacing: 3px; color: #333;">正在進入光譜市...</h2>
+        <div id="progress-container">
+            <div id="progress-bar"></div>
+        </div>
+        <div id="loading-text" style="font-family: monospace; margin-top: 15px; color: #00aaff; font-size: 14px;">下載全息地圖...</div>
+    </div>
+
+    <!-- 3. 遊戲 UI -->
+    <div id="ui-layer">
+        <div id="hud-top-container">
+            <div id="player-info-board" class="hud-panel">特務: ???</div>
+            <div id="timer-board" class="hud-panel">時間: 15</div>
+            <div id="hits-board" class="hud-panel">命中: 0</div>
+            <div id="accuracy-board" class="hud-panel">準度: 100%</div>
+        </div>
+        <div id="crosshair"></div>
+    </div>
+
+    <!-- 4. 開始選單 -->
+    <div id="blocker" class="overlay-screen">
+        <div id="instructions">
+            <h1>光譜市訓練場</h1>
+            <p style="color: #00aaff; font-weight: bold; margin-bottom: 20px; letter-spacing: 2px;">任務目標：15 秒限時射擊</p>
+            <p>點擊畫面開始任務</p>
+            <p>
+                移動: <span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span><br>
+                跳躍: <span class="key">空白鍵</span><br>
+                射擊: <span class="key">滑鼠左鍵</span><br>
+            </p>
+        </div>
+    </div>
+
+    <!-- 5. 結算畫面 -->
+    <div id="result-screen" class="overlay-screen">
+        <div class="result-box">
+            <h1 style="font-size: 40px; border:none; margin-bottom: 0;">任務結束</h1>
+            <p style="color: #888; font-size: 16px; margin-top: 0;">數據上傳完成</p>
+            
+            <div id="final-score" class="score-big">0</div>
+            <p id="final-acc" style="color: #00c6ff; font-size: 18px; font-weight: bold;">命中率: 0%</p>
+            
+            <h3 style="margin-top: 30px; color: #555; text-align: left; border-bottom: 1px solid #eee; padding-bottom: 10px; font-size: 16px;">特務排行榜</h3>
+            <ul id="leaderboard-list" class="leaderboard-list">
+                <!-- JS 動態生成 -->
+            </ul>
+
+            <div class="btn-group">
+                <button id="restart-btn" class="neon-btn" style="margin-top:0;">重新部署</button>
+                <button id="logout-btn" class="logout-btn">登出</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls';
+
+        let camera, scene, renderer, controls;
+        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+        let canJump = false; 
+        
+        let prevTime = performance.now();
+        const velocity = new THREE.Vector3();
+        const direction = new THREE.Vector3();
+
+        const bullets = [];
+        const enemies = [];
+        const particles = []; 
+        const obstacles = [];
+        
+        let lastShotTime = 0;
+        let gameActive = false;
+        let isGameOver = false;
+        let gunMesh;
+        let muzzleFlashMesh;
+        
+        let hits = 0;
+        let totalShots = 0;
+        let playerName = "Unknown";
+        let selectedSkinColor = 0xe0ac69; 
+
+        // 修改：時間為 15 秒
+        let timeLeft = 15;
+        let timerInterval = null;
+        
+        const COLOR_TARGET_RED = 0xff3366; 
+        const COLOR_TARGET_WHITE = 0xffffff;
+
+        const hitsEl = document.getElementById('hits-board');
+        const accEl = document.getElementById('accuracy-board');
+        const timerEl = document.getElementById('timer-board');
+        const playerInfoEl = document.getElementById('player-info-board');
+        const blocker = document.getElementById('blocker');
+        const instructions = document.getElementById('instructions');
+        const crosshair = document.getElementById('crosshair');
+        const resultScreen = document.getElementById('result-screen');
+        const finalScoreEl = document.getElementById('final-score');
+        const finalAccEl = document.getElementById('final-acc');
+        const leaderboardListEl = document.getElementById('leaderboard-list');
+        const restartBtn = document.getElementById('restart-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+
+        const loginScreen = document.getElementById('login-screen');
+        const loadingScreen = document.getElementById('loading-screen');
+        const loginBtn = document.getElementById('login-btn');
+        const usernameInput = document.getElementById('username');
+        const progressBar = document.getElementById('progress-bar');
+        const loadingText = document.getElementById('loading-text');
+
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playShootSound() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            // 雷射音效
+            osc.type = 'sawtooth'; 
+            osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(110, audioCtx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.15);
+        }
+
+        const charOptions = document.querySelectorAll('.char-option');
+        charOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                charOptions.forEach(opt => opt.classList.remove('selected'));
+                option.classList.add('selected');
+                selectedSkinColor = parseInt(option.dataset.color);
+            });
+        });
+
+        function updateHUD() {
+            hitsEl.innerText = `命中: ${hits}`;
+            let acc = 0;
+            if (totalShots > 0) acc = Math.round((hits / totalShots) * 100);
+            else acc = 100;
+            accEl.innerText = `準度: ${acc}%`;
+            timerEl.innerText = `時間: ${timeLeft}`;
+        }
+
+        function resetGameData() {
+            hits = 0;
+            totalShots = 0;
+            timeLeft = 15; // 修改：重置為 15 秒
+            isGameOver = false;
+            enemies.forEach(e => scene.remove(e));
+            enemies.length = 0;
+            bullets.forEach(b => scene.remove(b));
+            bullets.length = 0;
+            if(controls && controls.getObject()) {
+                controls.getObject().position.set(0, 5, 0); 
+                controls.getObject().rotation.set(0, 0, 0);
+                velocity.set(0, 0, 0); 
+            }
+            updateHUD();
+        }
+
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (!gameActive) return; 
+                timeLeft--;
+                updateHUD();
+                
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function endGame() {
+            gameActive = false;
+            isGameOver = true;
+            clearInterval(timerInterval);
+            controls.unlock(); 
+            
+            let acc = totalShots > 0 ? Math.round((hits / totalShots) * 100) : 0;
+            saveScore(playerName, hits);
+            
+            finalScoreEl.innerText = hits;
+            finalAccEl.innerText = `命中率: ${acc}% (${hits}/${totalShots})`;
+            updateLeaderboardUI();
+            
+            resultScreen.style.display = 'flex';
+            blocker.style.display = 'none';
+        }
+
+        function saveScore(name, score) {
+            let scores = JSON.parse(localStorage.getItem('lightCityScores')) || [];
+            scores.push({ name: name, score: score, date: new Date().toLocaleDateString() });
+            scores.sort((a, b) => b.score - a.score);
+            scores = scores.slice(0, 5);
+            localStorage.setItem('lightCityScores', JSON.stringify(scores));
+        }
+
+        function updateLeaderboardUI() {
+            const scores = JSON.parse(localStorage.getItem('lightCityScores')) || [];
+            leaderboardListEl.innerHTML = '';
+            
+            if (scores.length === 0) {
+                leaderboardListEl.innerHTML = '<li class="leaderboard-item" style="justify-content:center; color:#aaa;">尚無紀錄</li>';
+                return;
+            }
+
+            scores.forEach((s, index) => {
+                const li = document.createElement('li');
+                li.className = 'leaderboard-item';
+                li.innerHTML = `
+                    <span>#${index + 1} ${s.name}</span>
+                    <span>${s.score} 分</span>
+                `;
+                leaderboardListEl.appendChild(li);
+            });
+        }
+
+        loginBtn.addEventListener('click', () => {
+            let val = usernameInput.value.trim();
+            if(!val) {
+                const randomId = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+                val = `特務_${randomId}`;
+            }
+            playerName = val;
+            playerInfoEl.innerText = `特務: ${playerName}`;
+            
+            loginScreen.style.display = 'none';
+            loadingScreen.style.display = 'flex';
+            startLoadingProcess();
+        });
+
+        restartBtn.addEventListener('click', () => {
+            resultScreen.style.display = 'none';
+            resetGameData();
+            blocker.style.display = 'flex';
+            instructions.style.display = 'block';
+        });
+
+        logoutBtn.addEventListener('click', () => {
+            resultScreen.style.display = 'none';
+            loginScreen.style.display = 'flex';
+            usernameInput.value = ''; 
+            playerInfoEl.innerText = '特務: ???';
+            resetGameData();
+        });
+
+        function startLoadingProcess() {
+            let progress = 0;
+            const messages = ["連結光譜網路...", "同步全息裝置...", "生成虛擬城市...", "系統就緒..."];
+            const interval = setInterval(() => {
+                progress += Math.random() * 5 + 2;
+                if (progress > 100) progress = 100;
+                progressBar.style.width = progress + '%';
+                const msgIndex = Math.min(Math.floor((progress / 100) * messages.length), messages.length - 1);
+                loadingText.innerText = messages[msgIndex];
+
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        loadingScreen.style.display = 'none';
+                        if(gunMesh) {
+                            camera.remove(gunMesh);
+                            createHandGun();
+                        }
+                        resetGameData();
+                        blocker.style.display = 'flex'; 
+                    }, 500);
+                }
+            }, 50);
+        }
+
+        init();
+        animate();
+
+        function init() {
+            scene = new THREE.Scene();
+            // 明亮科幻背景：淺藍紫漸層
+            scene.background = new THREE.Color(0x87CEFA);
+            scene.fog = new THREE.Fog(0x87CEFA, 30, 600); 
+
+            // 強烈環境光 (白天)
+            const ambient = new THREE.AmbientLight(0xffffff, 0.9);
+            scene.add(ambient);
+
+            // 太陽光
+            const sunLight = new THREE.DirectionalLight(0xffffff, 1.2);
+            sunLight.position.set(100, 200, 50);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            
+            // 優化陰影範圍
+            const d = 400;
+            sunLight.shadow.camera.left = -d;
+            sunLight.shadow.camera.right = d;
+            sunLight.shadow.camera.top = d;
+            sunLight.shadow.camera.bottom = -d;
+            
+            scene.add(sunLight);
+
+            // 槍口閃光
+            const flashLight = new THREE.PointLight(0x00ffff, 0, 5);
+            scene.add(flashLight);
+            window.flashLight = flashLight;
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+            createHandGun();
+
+            controls = new PointerLockControls(camera, document.body);
+            
+            instructions.addEventListener('click', () => {
+                if (!isGameOver) controls.lock();
+            });
+
+            controls.addEventListener('lock', () => { 
+                instructions.style.display = 'none'; 
+                blocker.style.display = 'none'; 
+                gameActive = true; 
+                if (timeLeft === 15 && hits === 0) startTimer(); // 修改：檢查初始時間為 15
+                else if (timeLeft > 0) startTimer(); 
+            });
+
+            controls.addEventListener('unlock', () => { 
+                gameActive = false;
+                clearInterval(timerInterval); 
+                
+                if (isGameOver) {
+                    blocker.style.display = 'none';
+                    resultScreen.style.display = 'flex';
+                } else {
+                    blocker.style.display = 'flex'; 
+                    instructions.style.display = 'block'; 
+                }
+            });
+            
+            scene.add(controls.getObject());
+
+            const onKeyDown = (event) => {
+                switch (event.code) {
+                    case 'ArrowUp': case 'KeyW': moveForward = true; break;
+                    case 'ArrowLeft': case 'KeyA': moveLeft = true; break;
+                    case 'ArrowDown': case 'KeyS': moveBackward = true; break;
+                    case 'ArrowRight': case 'KeyD': moveRight = true; break;
+                    case 'Space': 
+                        if (canJump) {
+                            velocity.y += 200; // 跳躍力道
+                            canJump = false;
+                        }
+                        break;
+                }
+            };
+            const onKeyUp = (event) => {
+                switch (event.code) {
+                    case 'ArrowUp': case 'KeyW': moveForward = false; break;
+                    case 'ArrowLeft': case 'KeyA': moveLeft = false; break;
+                    case 'ArrowDown': case 'KeyS': moveBackward = false; break;
+                    case 'ArrowRight': case 'KeyD': moveRight = false; break;
+                }
+            };
+            document.addEventListener('keydown', onKeyDown);
+            document.addEventListener('keyup', onKeyUp);
+            document.addEventListener('mousedown', (e) => { if (gameActive && e.button === 0) shoot(); });
+
+            createLevel();
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            // 提高曝光度，讓畫面明亮
+            renderer.toneMapping = THREE.ReinhardToneMapping;
+            renderer.toneMappingExposure = 1.1;
+            document.body.appendChild(renderer.domElement);
+
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        // --- 光譜城市生成 (明亮風格) ---
+        function createLevel() {
+            // 1. 懸浮平台地面
+            const floorGeo = new THREE.PlaneGeometry(2000, 2000);
+            floorGeo.rotateX(-Math.PI / 2);
+            // 潔白網格地板
+            const floorMat = new THREE.MeshStandardMaterial({ 
+                color: 0xf0f8ff, // 愛麗絲藍
+                roughness: 0.1,
+                metalness: 0.1
+            });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.receiveShadow = true;
+            scene.add(floor);
+
+            // 地面網格線
+            const gridHelper = new THREE.GridHelper(2000, 100, 0x00aaff, 0xccddee);
+            gridHelper.position.y = 0.1;
+            scene.add(gridHelper);
+
+            // 2. 未來建築群 (明亮金屬)
+            const buildings = new THREE.Group();
+            const matWall = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2, metalness: 0.5 }); 
+            const matWin = new THREE.MeshBasicMaterial({ color: 0x00aaff }); 
+            
+            for(let i=0; i<100; i++) {
+                const bGroup = new THREE.Group();
+                const w = 20 + Math.random() * 30;
+                const d = 20 + Math.random() * 30;
+                const h = 50 + Math.random() * 150; 
+
+                const angle = Math.random() * Math.PI * 2;
+                const radius = 150 + Math.random() * 300;
+                bGroup.position.set(Math.cos(angle)*radius, 0, Math.sin(angle)*radius);
+
+                const bodyGeo = new THREE.BoxGeometry(w, h, d);
+                const body = new THREE.Mesh(bodyGeo, matWall);
+                body.position.y = h/2;
+                body.castShadow = true;
+                body.receiveShadow = true;
+                bGroup.add(body);
+
+                const winCount = Math.floor(h / 15);
+                for(let k=0; k<winCount; k++) {
+                    if(Math.random()>0.3) {
+                        const winGeo = new THREE.BoxGeometry(w+0.5, 2, d+0.5);
+                        const win = new THREE.Mesh(winGeo, matWin);
+                        win.position.y = k*15 + 10;
+                        bGroup.add(win);
+                    }
+                }
+                
+                buildings.add(bGroup);
+            }
+            scene.add(buildings);
+
+            // 3. 科技路燈
+            createBrightStreetLights();
+
+            // 4. 掩體：全息屏障 (明亮)
+            const barrierGeo = new THREE.BoxGeometry(8, 5, 1);
+            const barrierMat = new THREE.MeshStandardMaterial({ 
+                color: 0x00aaff, 
+                transparent: true, 
+                opacity: 0.6,
+                roughness: 0
+            });
+            const frameMat = new THREE.LineBasicMaterial({ color: 0x00ffff });
+            const frameGeo = new THREE.EdgesGeometry(barrierGeo);
+
+            for(let i=0; i<20; i++) {
+                const b = new THREE.Mesh(barrierGeo, barrierMat);
+                // 隨機散落
+                const x = (Math.random()-0.5) * 200;
+                const z = (Math.random()-0.5) * 200;
+                if(Math.abs(x)<30 && Math.abs(z)<30) continue; 
+
+                b.position.set(x, 2.5, z);
+                b.rotation.y = Math.random() * Math.PI;
+                b.castShadow = true;
+                
+                const frame = new THREE.LineSegments(frameGeo, frameMat);
+                b.add(frame);
+
+                scene.add(b);
+                obstacles.push(b);
+            }
+        }
+
+        function createBrightStreetLights() {
+            const matPole = new THREE.MeshStandardMaterial({ color: 0xeeeeee });
+            const matLight = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            
+            const radius = 120;
+            const count = 12;
+            
+            for(let i=0; i<count; i++) {
+                const angle = (i/count) * Math.PI * 2;
+                const x = Math.cos(angle) * radius;
+                const z = Math.sin(angle) * radius;
+                
+                const poleGeo = new THREE.CylinderGeometry(0.5, 0.5, 15, 8);
+                const pole = new THREE.Mesh(poleGeo, matPole);
+                pole.position.set(x, 7.5, z);
+                scene.add(pole);
+                
+                const headGeo = new THREE.SphereGeometry(1.5, 16, 16);
+                const head = new THREE.Mesh(headGeo, matLight);
+                head.position.set(x, 15, z);
+                scene.add(head);
+                
+                const light = new THREE.PointLight(0xffffff, 0.8, 60);
+                light.position.set(x, 14, z);
+                scene.add(light);
+            }
+        }
+
+        // --- 手部模型 (幾何圓柱風格) ---
+        function createHandGun() {
+            gunMesh = new THREE.Group();
+            const skinColor = selectedSkinColor;
+            const isMetallic = (skinColor === 0xc0c0c0 || skinColor === 0xffd700 || skinColor === 0x00ffff);
+            
+            const skinMat = new THREE.MeshStandardMaterial({ 
+                color: skinColor, 
+                roughness: isMetallic ? 0.3 : 0.6,
+                metalness: isMetallic ? 0.7 : 0.0,
+                emissive: skinColor === 0x00ffff ? 0x004444 : 0x000000
+            });
+
+            // 1. 手臂 (圓柱)
+            const armGeo = new THREE.CylinderGeometry(0.12, 0.14, 0.8, 12);
+            armGeo.rotateX(Math.PI / 2);
+            const arm = new THREE.Mesh(armGeo, skinMat);
+            arm.position.set(0.1, -0.1, 0.6);
+
+            // 2. 手掌 (Box)
+            const palmGeo = new THREE.BoxGeometry(0.2, 0.25, 0.25);
+            const palm = new THREE.Mesh(palmGeo, skinMat);
+            palm.position.set(0.1, 0, 0.15);
+
+            // 3. 食指 (圓柱 - 槍管)
+            const indexFingerGeo = new THREE.CylinderGeometry(0.04, 0.05, 0.4, 8);
+            indexFingerGeo.rotateX(Math.PI / 2);
+            const indexFinger = new THREE.Mesh(indexFingerGeo, skinMat);
+            indexFinger.position.set(0.1, 0.1, -0.2); 
+
+            // 4. 拇指 (圓柱 - 擊錘)
+            const thumbGeo = new THREE.CylinderGeometry(0.04, 0.05, 0.25, 8);
+            const thumb = new THREE.Mesh(thumbGeo, skinMat);
+            thumb.position.set(0.05, 0.25, 0.15); 
+            thumb.rotation.x = -0.5;
+
+            // 5. 拳頭 (其他手指)
+            const fistGeo = new THREE.BoxGeometry(0.18, 0.2, 0.25);
+            const fist = new THREE.Mesh(fistGeo, skinMat);
+            fist.position.set(0.1, -0.15, 0.15);
+
+            gunMesh.add(arm, palm, indexFinger, thumb, fist);
+
+            // 槍口光 (藍色)
+            const flashGeo = new THREE.SphereGeometry(0.1, 8, 8); 
+            const flashMat = new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.8 });
+            muzzleFlashMesh = new THREE.Mesh(flashGeo, flashMat);
+            muzzleFlashMesh.position.set(0.1, 0.1, -0.5);
+            muzzleFlashMesh.visible = false;
+            gunMesh.add(muzzleFlashMesh);
+
+            gunMesh.position.set(0.4, -0.4, -0.8);
+            gunMesh.rotation.y = -0.1;
+            
+            camera.add(gunMesh);
+        }
+
+        function shoot() {
+            const now = performance.now();
+            if (now - lastShotTime < 150) return; 
+            lastShotTime = now;
+
+            totalShots++; 
+            updateHUD();
+            playShootSound();
+
+            if(gunMesh) {
+                gunMesh.rotation.x += 0.2;
+                gunMesh.position.z += 0.1;
+                
+                crosshair.style.transform = "translate(-50%, -50%) scale(1.5)";
+                setTimeout(() => crosshair.style.transform = "translate(-50%, -50%) scale(1)", 80);
+                
+                if(muzzleFlashMesh) {
+                    muzzleFlashMesh.visible = true;
+                    muzzleFlashMesh.scale.setScalar(1.0 + Math.random() * 0.5); 
+                    setTimeout(() => { muzzleFlashMesh.visible = false; }, 50);
+                }
+            }
+
+            // 雷射子彈
+            const bulletGeo = new THREE.CylinderGeometry(0.05, 0.05, 4, 8); 
+            bulletGeo.rotateX(-Math.PI / 2); 
+            const bulletMat = new THREE.MeshBasicMaterial({ color: 0x00ffff }); 
+            const bullet = new THREE.Mesh(bulletGeo, bulletMat);
+            
+            bullet.position.copy(controls.getObject().position);
+            bullet.position.y -= 0.2; 
+            bullet.quaternion.copy(camera.quaternion);
+            
+            const vector = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            bullet.velocity = vector.multiplyScalar(600); // 高速雷射
+            bullet.alive = true;
+            
+            // 紀錄起點，用於射線檢測
+            bullet.prevPos = bullet.position.clone();
+
+            scene.add(bullet);
+            bullets.push(bullet);
+
+            window.flashLight.position.copy(controls.getObject().position).add(vector.multiplyScalar(2));
+            window.flashLight.intensity = 2;
+            setTimeout(() => { window.flashLight.intensity = 0; }, 50);
+        }
+
+        // 點到線段距離平方 (判定用)
+        function distToSegmentSquared(p, v, w) {
+            const l2 = v.distanceToSquared(w);
+            if (l2 === 0) return p.distanceToSquared(v);
+            let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y) + (p.z - v.z) * (w.z - v.z)) / l2;
+            t = Math.max(0, Math.min(1, t));
+            const projection = v.clone().lerp(w, t);
+            return p.distanceToSquared(projection);
+        }
+
+        function spawnEnemy() {
+            // 修改：標靶上限增加到 15
+            if (enemies.length >= 15) return; 
+            const group = new THREE.Group();
+            
+            // 標靶 (科技紅)
+            const targetRedMat = new THREE.MeshStandardMaterial({ color: COLOR_TARGET_RED, emissive: 0x550000, roughness: 0.3 });
+            const targetWhiteMat = new THREE.MeshBasicMaterial({ color: COLOR_TARGET_WHITE }); 
+
+            const isAerial = Math.random() < 0.4;
+            const spawnY = isAerial ? 15 + Math.random() * 20 : 3;
+
+            // 身體
+            const bodyGeo = new THREE.BoxGeometry(3, 4.5, 0.4);
+            const body = new THREE.Mesh(bodyGeo, targetRedMat);
+            body.position.y = 8; 
+
+            // 靶心
+            const bodyCenterGeo = new THREE.PlaneGeometry(1.5, 2);
+            const bodyCenter = new THREE.Mesh(bodyCenterGeo, targetWhiteMat);
+            bodyCenter.position.z = 0.21;
+            body.add(bodyCenter);
+
+            // 頭
+            const headGeo = new THREE.BoxGeometry(1.5, 1.5, 0.4); 
+            const head = new THREE.Mesh(headGeo, targetRedMat);
+            head.position.y = 11; 
+
+            const headCenterGeo = new THREE.PlaneGeometry(0.8, 0.8);
+            const headCenter = new THREE.Mesh(headCenterGeo, targetWhiteMat);
+            headCenter.position.z = 0.21;
+            head.add(headCenter);
+
+            group.add(body);
+            group.add(head);
+
+            if (!isAerial) {
+                const poleGeo = new THREE.CylinderGeometry(0.2, 0.2, 6, 8);
+                const poleMat = new THREE.MeshStandardMaterial({ color: 0x888888 });
+                const pole = new THREE.Mesh(poleGeo, poleMat);
+                pole.position.y = 3;
+                group.add(pole);
+            } else {
+                const propGeo = new THREE.BoxGeometry(6, 0.1, 0.5);
+                const propMat = new THREE.MeshBasicMaterial({ color: 0x00ffff }); 
+                const prop = new THREE.Mesh(propGeo, propMat);
+                prop.position.y = 12.5; 
+                group.add(prop);
+                group.isDrone = true;
+                group.prop = prop;
+            }
+
+            const angle = (Math.random() - 0.5) * Math.PI;
+            const radius = 40 + Math.random() * 50; 
+            const x = Math.cos(angle) * radius + controls.getObject().position.x;
+            const z = Math.sin(angle) * radius + controls.getObject().position.z;
+
+            group.position.set(x, spawnY, z);
+            group.initialPos = group.position.clone();
+            
+            group.moveSpeed = 0.5 + Math.random() * 1.5;
+            group.moveRange = 5 + Math.random() * 8;
+            group.timeOffset = Math.random() * 100;
+            
+            // 判定半徑
+            group.hitRadius = 5.0; 
+            
+            scene.add(group);
+            enemies.push(group);
+        }
+
+        function createExplosion(position, color = COLOR_TARGET_RED) {
+            for(let i=0; i<8; i++) {
+                const pGeo = new THREE.BoxGeometry(0.3, 0.3, 0.3); 
+                const pMat = new THREE.MeshBasicMaterial({ color: color });
+                const p = new THREE.Mesh(pGeo, pMat);
+                p.position.copy(position);
+                p.velocity = new THREE.Vector3((Math.random()-0.5)*15, Math.random()*15, (Math.random()-0.5)*15);
+                p.life = 0.6; 
+                scene.add(p);
+                particles.push(p);
+            }
+        }
+
+        function checkCollision(pos, radius, list) {
+            for(let obj of list) {
+                const dx = Math.abs(pos.x - obj.position.x);
+                const dz = Math.abs(pos.z - obj.position.z);
+                if (dx < 5 + radius && dz < 4 + radius) return true;
+            }
+            return false;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (!gameActive) { renderer.render(scene, camera); return; }
+
+            const time = performance.now();
+            const delta = Math.min((time - prevTime) / 1000, 0.1);
+
+            if(gunMesh) {
+                gunMesh.rotation.x = THREE.MathUtils.lerp(gunMesh.rotation.x, 0, delta * 10);
+                gunMesh.position.z = THREE.MathUtils.lerp(gunMesh.position.z, -0.8, delta * 10);
+                gunMesh.position.y = THREE.MathUtils.lerp(gunMesh.position.y, -0.4, delta * 10);
+                const amplitude = (moveForward || moveBackward || moveLeft || moveRight) ? 0.02 : 0.005;
+                gunMesh.position.y += Math.sin(time * 0.008) * amplitude;
+            }
+
+            velocity.x -= velocity.x * 10.0 * delta;
+            velocity.z -= velocity.z * 10.0 * delta;
+            velocity.y -= 9.8 * 100.0 * delta; 
+
+            direction.z = Number(moveForward) - Number(moveBackward);
+            direction.x = Number(moveRight) - Number(moveLeft);
+            direction.normalize();
+
+            if (moveForward || moveBackward) velocity.z -= direction.z * 600.0 * delta;
+            if (moveLeft || moveRight) velocity.x -= direction.x * 600.0 * delta;
+
+            const oldPos = controls.getObject().position.clone();
+            controls.moveRight(-velocity.x * delta);
+            controls.moveForward(-velocity.z * delta);
+            
+            controls.getObject().position.y += (velocity.y * delta);
+
+            if (checkCollision(controls.getObject().position, 1, obstacles)) {
+                controls.getObject().position.x = oldPos.x;
+                controls.getObject().position.z = oldPos.z;
+            }
+
+            if (controls.getObject().position.y < 5) {
+                velocity.y = 0;
+                controls.getObject().position.y = 5;
+                canJump = true; 
+            }
+
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const b = bullets[i];
+                const startPos = b.position.clone();
+                b.position.addScaledVector(b.velocity, delta);
+                const endPos = b.position.clone();
+
+                if(b.position.distanceTo(controls.getObject().position) > 500) {
+                    scene.remove(b);
+                    bullets.splice(i, 1);
+                    continue;
+                }
+
+                if (checkCollision(b.position, 0.2, obstacles)) {
+                    createExplosion(b.position, 0x00ffff); 
+                    scene.remove(b);
+                    bullets.splice(i, 1);
+                    continue;
+                }
+
+                let hit = false;
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    const e = enemies[j];
+                    const targetCenter = e.position.clone();
+                    targetCenter.y += 9; 
+                    
+                    const distSq = distToSegmentSquared(targetCenter, startPos, endPos);
+                    const hitRadiusSq = e.hitRadius * e.hitRadius;
+
+                    if (distSq < hitRadiusSq) { 
+                        createExplosion(targetCenter, COLOR_TARGET_RED);
+                        scene.remove(e);
+                        enemies.splice(j, 1);
+                        hits++;
+                        updateHUD();
+                        scene.remove(b);
+                        bullets.splice(i, 1);
+                        hit = true;
+                        break;
+                    }
+                }
+            }
+
+            // 修改：生成機率從 0.03 提升到 0.05
+            if (enemies.length < 15) if(Math.random() < 0.05) spawnEnemy();
+            for (let e of enemies) {
+                e.lookAt(controls.getObject().position);
+                const moveOffset = Math.sin((time * 0.001 * e.moveSpeed) + e.timeOffset) * e.moveRange;
+                const right = new THREE.Vector3(1, 0, 0).applyQuaternion(e.quaternion);
+                e.position.copy(e.initialPos).add(right.multiplyScalar(moveOffset));
+                
+                if(e.isDrone && e.prop) {
+                    e.prop.rotation.y += delta * 15;
+                    e.position.y = e.initialPos.y + Math.sin(time * 0.003) * 1.5;
+                }
+            }
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.life -= delta;
+                p.position.addScaledVector(p.velocity, delta);
+                p.velocity.y -= 9.8 * delta;
+                p.rotation.x += delta * 10;
+                if(p.position.y < 0) p.position.y = 0;
+                if (p.life <= 0) { scene.remove(p); particles.splice(i, 1); } 
+                else { p.scale.setScalar(p.life); }
+            }
+
+            prevTime = time;
+            renderer.render(scene, camera);
+        }
+        
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+    </script>
+</body>
 </html>
